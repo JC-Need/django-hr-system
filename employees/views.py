@@ -1,49 +1,170 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Employee
-from .forms import EmployeeForm  # <--- 1. อย่าลืมบรรทัดนี้! เรียกใช้ฟอร์มที่เพิ่งสร้าง
+from django.http import HttpResponse
+from django.template import Template, RequestContext
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
+from .models import Employee, Attendance, LeaveRequest
+from .forms import LeaveRequestForm
 
+# 1. หน้า Dashboard (Main Control Center)
+@never_cache      # ห้ามจำหน้าเก่า (แก้ปัญหา Back แล้วยังเข้าได้)
+@login_required   # ต้องล็อกอินก่อน
 def dashboard(request):
-    # --- ส่วนที่ 1: จัดการการเพิ่มพนักงาน (POST Request) ---
-    if request.method == 'POST':
-        form = EmployeeForm(request.POST)
-        if form.is_valid():
-            form.save()  # บันทึกลง Database ทันที
-            return redirect('/')  # รีเฟรชหน้าจอใหม่
-    else:
-        form = EmployeeForm() # ถ้าเพิ่งเข้ามา ให้สร้างฟอร์มเปล่าๆ เตรียมไว้
-
-    # --- ส่วนที่ 2: คำนวณเงินโบนัส (เหมือนเดิม) ---
-    raw_profit = request.GET.get('profit', '0')
-    clean_profit = raw_profit.replace(',', '')
+    # --- A. ตรวจสอบตัวตน: User นี้คือพนักงานคนไหน? ---
     try:
-        total_bonus_pool = float(clean_profit)
-    except ValueError:
-        total_bonus_pool = 0.0
+        current_emp = request.user.employee
+    except:
+        # ถ้าบัญชียังไม่จับคู่ -> แสดงหน้า Error พร้อมปุ่ม Logout
+        error_html = """
+            <div style="text-align:center; margin-top:50px; font-family:sans-serif;">
+                <h1 style="color:red;">⛔ บัญชีนี้ยังไม่ได้ผูกกับพนักงาน</h1>
+                <p>โปรดติดต่อผู้ดูแลระบบ (Admin) เพื่อทำการจับคู่ User กับ Employee</p>
+                <br>
+                <form action="/logout/" method="post">
+                    {% csrf_token %}
+                    <button type="submit" style="background-color: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                        🚪 ออกจากระบบ
+                    </button>
+                </form>
+            </div>
+        """
+        return HttpResponse(Template(error_html).render(RequestContext(request)))
 
-    all_employees = Employee.objects.all()
-    total_weight = sum(float(emp.level_weight) for emp in all_employees)
+    # --- B. กฎการมองเห็น (Visibility Rules) 👁️ ---
+    # แผนกที่มีสิทธิ์เห็นข้อมูลทุกคน (บอส และ HR)
+    privileged_depts = ['Management', 'Human Resources'] 
+    
+    # เงื่อนไข: ถ้าอยู่แผนกพิเศษ หรือ เป็น Superuser -> ให้เห็นทั้งหมด (all)
+    if current_emp.department in privileged_depts or request.user.is_superuser:
+        employees = Employee.objects.all()
+        is_manager = True
+    else:
+        # พนักงานทั่วไป -> เห็นแค่ตัวเองคนเดียว (filter id)
+        employees = Employee.objects.filter(id=current_emp.id)
+        is_manager = False
 
-    for emp in all_employees:
-        if total_weight > 0:
-            ratio = float(emp.level_weight) / total_weight
-            bonus = ratio * total_bonus_pool
-            emp.bonus_amount = f"{bonus:,.2f}"
-        else:
-            emp.bonus_amount = "0.00"
+    # --- C. ระบบกรองแผนก (เฉพาะคนที่มีสิทธิ์เห็นหลายคน) ---
+    department_list = []
+    selected_dept = None
+    
+    if is_manager: 
+        department_list = Employee.objects.values_list('department', flat=True).distinct()
+        department_list = [d for d in department_list if d]
+        selected_dept = request.GET.get('dept') 
+        if selected_dept:
+            employees = employees.filter(department=selected_dept)
 
-    # --- ส่วนที่ 3: ส่งของไปหน้าเว็บ ---
+    # --- D. วนลูปจัดการข้อมูลแสดงผล (เงินเดือน, ตอกบัตร) ---
+    today = timezone.now().date()
+    for emp in employees:
+        emp.formatted_salary = "{:,.2f}".format(emp.base_allowance)
+        attendance = Attendance.objects.filter(employee=emp, date=today).first()
+        emp.today_attendance = attendance
+
+    # --- E. ประวัติการลา (Leave History) ---
+    if is_manager:
+        # หัวหน้าเห็นใบลาของทุกคน (เรียงใหม่ -> เก่า)
+        leaves = LeaveRequest.objects.all().order_by('-created_at')
+    else:
+        # พนักงานเห็นแค่ของตัวเอง
+        leaves = LeaveRequest.objects.filter(employee=current_emp).order_by('-created_at')
+
     context = {
-        'form': form,  # ส่งฟอร์มไปให้หน้าเว็บวาด
-        'profit_input': f"{total_bonus_pool:,.2f}",
-        'profit': total_bonus_pool,
-        'total_weight': total_weight,
-        'employees': all_employees,
+        'employees': employees,
+        'department_list': department_list,
+        'selected_dept': selected_dept,
+        'leaves': leaves,
     }
-
     return render(request, 'employees/dashboard.html', context)
 
-# (ฟังก์ชัน delete_employee ปล่อยไว้เหมือนเดิมครับ)
+
+# 2. หน้าเขียนใบลา (Leave Request)
+@never_cache
+@login_required
+def leave_request(request):
+    if request.method == 'POST':
+        form = LeaveRequestForm(request.POST)
+        if form.is_valid():
+            leave = form.save(commit=False)
+            # เชื่อม User ที่ล็อกอิน เข้ากับใบลาอัตโนมัติ
+            try:
+                leave.employee = request.user.employee
+                leave.save()
+                return redirect('dashboard')
+            except:
+                return HttpResponse("Error: บัญชีของคุณยังไม่ได้ผูกกับพนักงาน")
+    else:
+        form = LeaveRequestForm()
+    
+    return render(request, 'employees/leave_form.html', {'form': form})
+
+
+# 3. ฟังก์ชันตอกบัตร (Check-in/Out)
+@login_required
+def attendance_action(request, emp_id):
+    target_emp = get_object_or_404(Employee, id=emp_id)
+    
+    # กฎ: ห้ามตอกบัตรให้คนอื่น (ยกเว้นเป็นบอส/Admin)
+    privileged_depts = ['Management', 'Human Resources']
+    
+    # เช็คว่าคนกดคือใคร?
+    try:
+        requester = request.user.employee
+        is_boss = (requester.department in privileged_depts)
+    except:
+        is_boss = False # ถ้าหาตัวคนกดไม่เจอ ตีว่าเป็นคนนอก
+
+    # ถ้าไม่ใช่เจ้าของบัตร และไม่ใช่บอส และไม่ใช่ Superuser -> ดีดออก
+    if request.user.employee != target_emp and not is_boss and not request.user.is_superuser:
+        return redirect('dashboard') 
+
+    # บันทึกเวลา
+    today = timezone.now().date()
+    attendance, created = Attendance.objects.get_or_create(employee=target_emp, date=today)
+
+    if created:
+        attendance.time_in = timezone.now().time()
+        attendance.save()
+    elif not attendance.time_out:
+        attendance.time_out = timezone.now().time()
+        attendance.save()
+    
+    return redirect('dashboard')
+
+
+# 4. ฟังก์ชันคำนวณโบนัส
+@login_required
+def calculate_bonus(request):
+    if request.method == "POST":
+        # เช็คสิทธิ์: เฉพาะ Management/HR หรือ Superuser
+        try:
+            current_emp = request.user.employee
+            if not request.user.is_superuser and current_emp.department not in ['Management', 'Human Resources']:
+                 return redirect('dashboard')
+        except:
+             if not request.user.is_superuser: return redirect('dashboard')
+
+        employees = Employee.objects.all()
+        for emp in employees:
+            try:
+                salary = float(emp.base_allowance)
+                weight = float(emp.level_weight)
+                bonus = salary * weight
+                emp.bonus_amount = "{:,.2f}".format(bonus)
+                emp.save()
+            except:
+                continue
+    return redirect('dashboard')
+
+
+# 5. ฟังก์ชันลบพนักงาน
+@login_required
 def delete_employee(request, emp_id):
+    # ให้เฉพาะ Superuser (Admin สูงสุด) ลบได้เท่านั้น
+    if not request.user.is_superuser:
+        return redirect('dashboard')
+        
     emp = get_object_or_404(Employee, id=emp_id)
     emp.delete()
-    return redirect('/')
+    return redirect('dashboard')
