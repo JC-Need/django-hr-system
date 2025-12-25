@@ -1,25 +1,33 @@
 from django import forms
-from .models import Employee, LeaveRequest  # เพิ่ม LeaveRequest เข้ามาตรงนี้
+from .models import LeaveRequest
 
-# 1. ฟอร์มพนักงาน (ของเดิม)
-class EmployeeForm(forms.ModelForm):
-    class Meta:
-        model = Employee
-        fields = ['name', 'position', 'base_allowance', 'level_weight']
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'input-luxury', 'placeholder': 'ชื่อ-นามสกุล'}),
-            'position': forms.TextInput(attrs={'class': 'input-luxury', 'placeholder': 'ตำแหน่ง'}),
-            'base_allowance': forms.NumberInput(attrs={'class': 'input-luxury', 'placeholder': 'เงินเดือน'}),
-            'level_weight': forms.NumberInput(attrs={'class': 'input-luxury', 'placeholder': 'ตัวคูณ'}),
-        }
-
-# 2. ฟอร์มใบลา (ของใหม่ที่เพิ่มเข้าไป)
 class LeaveRequestForm(forms.ModelForm):
+    # ✅ กำหนดฟิลด์วันที่ใหม่ เพื่อรองรับ dd/mm/yyyy และใส่คลาส 'datepicker'
+    start_date = forms.DateField(
+        label='ลาตั้งแต่วันที่',
+        input_formats=['%d/%m/%Y'], # บอกระบบว่ารับค่าแบบ วัน/เดือน/ปี
+        widget=forms.DateInput(attrs={
+            'class': 'form-control datepicker', # ใส่ชื่อเล่นให้มันว่า datepicker
+            'placeholder': 'วว/ดด/ปปปป'
+        })
+    )
+    end_date = forms.DateField(
+        label='ถึงวันที่',
+        input_formats=['%d/%m/%Y'],
+        widget=forms.DateInput(attrs={
+            'class': 'form-control datepicker',
+            'placeholder': 'วว/ดด/ปปปป'
+        })
+    )
+
     class Meta:
         model = LeaveRequest
-        fields = ['employee', 'leave_type', 'start_date', 'end_date', 'reason']
+        fields = ['leave_type', 'start_date', 'end_date', 'reason']
         widgets = {
-            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'style': 'padding: 8px; border-radius: 4px; border: 1px solid #ccc;'}),
-            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'style': 'padding: 8px; border-radius: 4px; border: 1px solid #ccc;'}),
-            'reason': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'style': 'width: 100%; padding: 8px;'}),
+            'leave_type': forms.Select(attrs={'class': 'form-select'}),
+            'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'เช่น ไม่สบาย, ไปทำธุระ...'}),
+        }
+        labels = {
+            'leave_type': 'ประเภทการลา',
+            'reason': 'เหตุผลการลา',
         }

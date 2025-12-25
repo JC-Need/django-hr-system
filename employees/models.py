@@ -1,72 +1,93 @@
 from django.db import models
-from django.utils import timezone
-from django.contrib.auth.models import User  # ✨ 1. นำเข้าโมเดล User ของระบบ
+from django.contrib.auth.models import User
 
-# 1. ข้อมูลพนักงาน
+# ================================
+# 1. ตารางพนักงาน (Employee)
+# ================================
 class Employee(models.Model):
-    # ✨ 2. เชื่อม User เข้ากับ Employee (1 คน มีได้ 1 User เท่านั้น)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name="บัญชีผู้ใช้งาน (User)")
+    STATUS_CHOICES = [
+        ('ACTIVE', 'ทำงานอยู่'),
+        ('PROBATION', 'ทดลองงาน'),
+        ('RESIGNED', 'ลาออก'),
+    ]
+
+    # เชื่อมกับ User ของ Django
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     
-    name = models.CharField(max_length=100, verbose_name="ชื่อ-นามสกุล")
+    # ✅ ข้อมูลพื้นฐาน (ปรับใหม่: แยกชื่อ-นามสกุล + เพิ่มรูป)
+    employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True, verbose_name="รหัสพนักงาน")
+    
+    first_name = models.CharField(max_length=100, verbose_name="ชื่อจริง", default="")
+    last_name = models.CharField(max_length=100, verbose_name="นามสกุล", default="")
+    
+    # ✅ ช่องเก็บรูป (ต้องติดตั้ง Pillow ก่อนนะ)
+    image = models.ImageField(upload_to='employee_images/', blank=True, null=True, verbose_name="รูปโปรไฟล์")
+
     position = models.CharField(max_length=100, verbose_name="ตำแหน่ง")
-    base_allowance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="เงินเดือน")
-    level_weight = models.DecimalField(max_digits=5, decimal_places=2, default=1.00, verbose_name="ตัวคูณโบนัส")
+    department = models.CharField(max_length=100, verbose_name="แผนก")
     
-    emp_id = models.CharField(max_length=10, blank=True, null=True, verbose_name="รหัสพนักงาน")
-    department = models.CharField(max_length=100, blank=True, null=True, verbose_name="แผนก")
-    hire_date = models.DateField(default=timezone.now, verbose_name="วันที่เริ่มงาน")
-    birth_date = models.DateField(blank=True, null=True, verbose_name="วันเกิด")
-    resume_link = models.URLField(blank=True, null=True, verbose_name="🔗 ลิงก์ใบสมัคร/CV")
-
-    STATUS_CHOICES = [
-        ('ACTIVE', '✅ ทำงานอยู่ (Active)'),
-        ('RESIGNED', '❌ ลาออกแล้ว (Resigned)'),
-    ]
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE', verbose_name="สถานะการทำงาน")
-
-    policy_doc_link = models.URLField(blank=True, null=True, verbose_name="🔗 ลิงก์ลายเซ็นรับทราบกฎระเบียบ")
-    resignation_doc_link = models.URLField(blank=True, null=True, verbose_name="🔗 ลิงก์ใบลาออก (ถ้ามี)")
-
-    bonus_amount = models.CharField(max_length=50, default="0.00")
+    # เงินๆ ทองๆ
+    base_allowance = models.DecimalField(max_digits=10, decimal_places=2, default=15000, verbose_name="เงินเดือน")
+    bonus_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="โบนัสสะสม")
+    
+    # อื่นๆ
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE', verbose_name="สถานะ")
+    phone_number = models.CharField(max_length=15, blank=True, null=True, verbose_name="เบอร์โทร")
+    joined_date = models.DateField(auto_now_add=True, verbose_name="วันที่เริ่มงาน")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} ({self.position})"
+        return f"{self.first_name} {self.last_name} ({self.position})"
 
+    # ฟังก์ชันช่วยจัดรูปแบบเงิน (เผื่อเรียกใช้)
+    @property
+    def formatted_salary(self):
+        return "{:,.2f}".format(self.base_allowance)
 
-# 2. ข้อมูลการลงเวลา
+# ================================
+# 2. ตารางตอกบัตร (Attendance)
+# ================================
 class Attendance(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, verbose_name="ชื่อพนักงาน")
-    date = models.DateField(default=timezone.now, verbose_name="วันที่")
-    time_in = models.TimeField(blank=True, null=True, verbose_name="เวลาเข้างาน")
-    time_out = models.TimeField(blank=True, null=True, verbose_name="เวลาออกงาน")
-    
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendances')
+    date = models.DateField()
+    time_in = models.TimeField(null=True, blank=True)
+    time_out = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('employee', 'date')
+
     def __str__(self):
-        return f"{self.employee.name} - {self.date}"
+        return f"{self.employee.first_name} - {self.date}"
 
-
-# 3. ข้อมูลการลางาน
+# ================================
+# 3. ตารางการลา (Leave Request)
+# ================================
 class LeaveRequest(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, verbose_name="ชื่อพนักงาน")
-    
     LEAVE_TYPES = [
-        ('SICK', '🤒 ลาป่วย (Sick Leave)'),
-        ('VACATION', '🏖️ ลาพักร้อน (Vacation)'),
-        ('BUSINESS', '💼 ลากิจ (Business Leave)'),
+        ('SICK', 'ลาป่วย'),
+        ('BUSINESS', 'ลากิจ'),
+        ('VACATION', 'พักร้อน'),
     ]
-    leave_type = models.CharField(max_length=10, choices=LEAVE_TYPES, default='SICK', verbose_name="ประเภทการลา")
-    
-    start_date = models.DateField(verbose_name="ลาตั้งแต่วันที่")
-    end_date = models.DateField(verbose_name="ถึงวันที่")
-    reason = models.TextField(blank=True, null=True, verbose_name="เหตุผล")
-    
     STATUS_CHOICES = [
-        ('PENDING', '🟡 รออนุมัติ'),
-        ('APPROVED', '🟢 อนุมัติแล้ว'),
-        ('REJECTED', '🔴 ไม่อนุมัติ'),
+        ('PENDING', 'รออนุมัติ'),
+        ('APPROVED', 'อนุมัติ'),
+        ('REJECTED', 'ไม่อนุมัติ'),
     ]
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING', verbose_name="สถานะ")
-    
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="วันที่ยื่นใบลา")
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    leave_type = models.CharField(max_length=20, choices=LEAVE_TYPES)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    reason = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.employee.name} - {self.get_leave_type_display()}"
+        return f"{self.employee.first_name} - {self.leave_type}"
+    
+    @property
+    def days(self):
+        delta = self.end_date - self.start_date
+        return delta.days + 1

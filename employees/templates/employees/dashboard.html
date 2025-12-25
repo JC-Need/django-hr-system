@@ -1,205 +1,185 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HR & Bonus System Dashboard</title>
-    <style>
-        /* --- CSS ตกแต่งหน้าเว็บ --- */
-        body { font-family: 'Sarabun', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
-        .container { max-width: 1300px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
-        h2 { color: #2c3e50; margin-bottom: 15px; border-left: 5px solid #007bff; padding-left: 10px; }
-        
-        /* ปุ่มต่างๆ */
-        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-        .btn { padding: 8px 15px; text-decoration: none; border-radius: 6px; color: white; font-weight: bold; border: none; cursor: pointer; display: inline-block; font-size: 14px;}
-        .btn-add { background-color: #28a745; }
-        .btn-calc { background-color: #007bff; }
-        .btn-admin { background-color: #6c757d; }
-        .btn-leave { background-color: #ffc107; color: black; } /* ปุ่มขอลา */
-        .btn-logout { background-color: #dc3545; } /* ปุ่ม Logout สีแดง */
-        .btn:hover { opacity: 0.9; }
+{% extends 'employees/base_dashboard.html' %}
 
-        /* กล่องตัวกรอง (Filter Box) */
-        .filter-box {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            border: 1px solid #e9ecef;
-        }
-        .filter-label { font-weight: bold; margin-right: 10px; color: #495057; }
-        .filter-select { padding: 8px; border-radius: 5px; border: 1px solid #ced4da; cursor: pointer; min-width: 200px; }
+{% block content %}
+<style>
+    /* การ์ดสถิติ (ไล่สีสวยๆ + มีเงานูนๆ) */
+    .stat-card {
+        border: none;
+        border-radius: 20px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    
+    /* สีไล่ระดับ (Gradient Colors) */
+    .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .bg-gradient-success { background: linear-gradient(135deg, #2af598 0%, #009efd 100%); }
+    .bg-gradient-warning { background: linear-gradient(135deg, #fccb90 0%, #d57eeb 100%); }
 
-        /* ตาราง */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background-color: #343a40; color: white; padding: 15px; text-align: left; }
-        td { padding: 15px; border-bottom: 1px solid #ddd; vertical-align: middle; }
-        tr:hover { background-color: #f1f1f1; }
+    /* ไอคอนจางๆ ด้านหลังการ์ด */
+    .card-icon-bg {
+        position: absolute;
+        right: 15px;
+        bottom: 15px;
+        font-size: 4rem;
+        opacity: 0.2;
+        color: white;
+    }
 
-        /* ป้ายสถานะ (Badge) */
-        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 0.85em; font-weight: bold; display: inline-block; }
-        .status-active { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .status-resigned { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    /* ตารางสวยงาม */
+    .card-table {
+        border: none;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9ff;
+    }
+    
+    /* รูปโปรไฟล์วงกลม */
+    .avatar-circle {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .avatar-placeholder {
+        width: 45px;
+        height: 45px;
+        background-color: #e9ecef;
+        color: #adb5bd;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+</style>
 
-        .emp-name { font-weight: bold; color: #2c3e50; }
-        .bonus-amount { font-weight: bold; color: #28a745; }
-        
-        /* จัดการ Font */
-        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <h1>🏢 ระบบบริหารบุคคล (HR System)</h1>
-
-        <div class="btn-group">
-            <a href="/leave_request/" class="btn btn-leave" target="_blank">📝 ยื่นใบลาป่วย/กิจ</a>
-            <a href="/admin/employees/employee/add/" class="btn btn-add" target="_blank">+ เพิ่มพนักงานใหม่</a>
-            <a href="/admin/" class="btn btn-admin" target="_blank">⚙️ จัดการหลังบ้าน</a>
-            
-            <form action="{% url 'calculate_bonus' %}" method="post" style="margin:0;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-calc">💰 คำนวณโบนัสประจำปี</button>
-            </form>
-
-            <form action="{% url 'logout' %}" method="post" style="margin:0;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-logout">🚪 ออกจากระบบ</button>
-            </form>
+<div class="container-fluid py-4 px-4">
+    
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-0">Dashboard ภาพรวม</h3>
+            <p class="text-muted small mb-0">ยินดีต้อนรับกลับ, ผู้ดูแลระบบ!</p>
         </div>
-
-        <div class="filter-box">
-            <span class="filter-label">📂 เลือกดูตามแผนก:</span>
-            <form method="get" style="margin: 0;">
-                <select name="dept" class="filter-select" onchange="this.form.submit()">
-                    <option value="">-- ดูรายชื่อทั้งหมด (All Departments) --</option>
-                    {% for dept in department_list %}
-                        <option value="{{ dept }}" {% if dept == selected_dept %}selected{% endif %}>
-                            {{ dept }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </form>
-        </div>
-
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>รหัส</th>
-                        <th>ชื่อ-นามสกุล</th>
-                        <th>แผนก</th>
-                        <th>ตำแหน่ง</th>
-                        <th>สถานะ</th>
-                        <th style="text-align: center;">ลงเวลา (Time)</th>
-                        <th>เงินเดือน</th>
-                        <th>โบนัส (บาท)</th>
-                        <th>จัดการ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for emp in employees %}
-                    <tr>
-                        <td>{{ emp.emp_id|default:"-" }}</td>
-                        <td class="emp-name">{{ emp.name }}</td>
-                        <td>{{ emp.department|default:"ไม่ระบุ" }}</td>
-                        <td>{{ emp.position }}</td>
-                        
-                        <td>
-                            {% if emp.status == 'ACTIVE' %}
-                                <span class="status-badge status-active">{{ emp.get_status_display }}</span>
-                            {% else %}
-                                <span class="status-badge status-resigned">{{ emp.get_status_display }}</span>
-                            {% endif %}
-                        </td>
-
-                        <td style="text-align: center;">
-                            {% if not emp.today_attendance %}
-                                <a href="{% url 'attendance_action' emp.id %}" class="btn" style="background-color: #28a745; font-size: 0.8em;">🕒 เข้างาน</a>
-                            {% elif not emp.today_attendance.time_out %}
-                                <div style="margin-bottom: 5px; font-size: 0.8em; color: green; font-weight: bold;">เข้า: {{ emp.today_attendance.time_in|time:"H:i" }}</div>
-                                <a href="{% url 'attendance_action' emp.id %}" class="btn" style="background-color: #ffc107; color: black; font-size: 0.8em;">🏃 ออกงาน</a>
-                            {% else %}
-                                <div style="font-size: 0.85em; color: #444;">
-                                    <div>🟢 {{ emp.today_attendance.time_in|time:"H:i" }}</div>
-                                    <div>🔴 {{ emp.today_attendance.time_out|time:"H:i" }}</div>
-                                    <div style="color: blue; font-weight: bold; font-size: 0.8em;">✅ ครบ</div>
-                                </div>
-                            {% endif %}
-                        </td>
-
-                        <td>{{ emp.formatted_salary }}</td>
-                        <td class="bonus-amount">฿ {{ emp.bonus_amount }}</td>
-                        <td>
-                            <a href="/admin/employees/employee/{{ emp.id }}/change/" target="_blank" style="color: #007bff; text-decoration: none;">✎ แก้ไข</a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="9" style="text-align: center; color: #999; padding: 30px;">ไม่พบข้อมูลพนักงานในแผนกนี้</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <br><hr style="border-top: 2px dashed #bbb;"><br>
-
-        <h2>📅 ประวัติการขอลางาน (Leave Requests)</h2>
-        
-        <div style="overflow-x: auto; margin-bottom: 50px;">
-            <table>
-                <thead>
-                    <tr style="background-color: #17a2b8;"> <th style="background-color: #17a2b8;">วันที่ยื่น</th>
-                        <th style="background-color: #17a2b8;">ชื่อพนักงาน</th>
-                        <th style="background-color: #17a2b8;">ประเภทการลา</th>
-                        <th style="background-color: #17a2b8;">ลาวันที่</th>
-                        <th style="background-color: #17a2b8;">เหตุผล</th>
-                        <th style="background-color: #17a2b8;">สถานะ</th>
-                        <th style="background-color: #17a2b8;">จัดการ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for leave in leaves %}
-                    <tr>
-                        <td>{{ leave.created_at|date:"d M Y" }}</td>
-                        <td style="font-weight: bold;">{{ leave.employee.name }}</td>
-                        <td>
-                            {% if leave.leave_type == 'SICK' %} 🤒 ป่วย
-                            {% elif leave.leave_type == 'VACATION' %} 🏖️ พักร้อน
-                            {% else %} 💼 กิจธุระ
-                            {% endif %}
-                        </td>
-                        <td>{{ leave.start_date|date:"d/m/y" }} - {{ leave.end_date|date:"d/m/y" }}</td>
-                        <td style="color: #666; font-style: italic;">"{{ leave.reason }}"</td>
-                        <td>
-                            {% if leave.status == 'APPROVED' %}
-                                <span class="status-badge status-active">🟢 อนุมัติแล้ว</span>
-                            {% elif leave.status == 'REJECTED' %}
-                                <span class="status-badge status-resigned">🔴 ไม่อนุมัติ</span>
-                            {% else %}
-                                <span class="status-badge" style="background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;">🟡 รออนุมัติ</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="/admin/employees/leaverequest/{{ leave.id }}/change/" target="_blank" style="text-decoration: none; font-weight: bold; color: #007bff;">📝 พิจารณา</a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" style="text-align: center; color: #999; padding: 20px;">ยังไม่มีรายการขอลาหยุด</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
+        <a href="/admin/employees/employee/add/" target="_blank" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
+            <i class="fa-solid fa-plus me-2"></i> เพิ่มพนักงานใหม่
+        </a>
     </div>
 
-</body>
-</html>
+    <div class="row g-4 mb-5">
+        <div class="col-xl-4 col-md-6">
+            <div class="card stat-card bg-gradient-primary h-100 p-3">
+                <div class="card-body position-relative z-1">
+                    <h6 class="text-white-50 text-uppercase fw-bold mb-1">พนักงานทั้งหมด</h6>
+                    <h2 class="display-5 fw-bold mb-0">{{ total_employees }} <span class="fs-4">คน</span></h2>
+                </div>
+                <i class="fa-solid fa-users card-icon-bg"></i>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-md-6">
+            <div class="card stat-card bg-gradient-success h-100 p-3">
+                <div class="card-body position-relative z-1">
+                    <h6 class="text-white-50 text-uppercase fw-bold mb-1">เงินเดือนรวม (เดือนนี้)</h6>
+                    <h2 class="display-5 fw-bold mb-0">฿ {{ total_salary }}</h2>
+                </div>
+                <i class="fa-solid fa-sack-dollar card-icon-bg"></i>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-md-6">
+            <a href="{% url 'leave_approval' %}" class="text-decoration-none">
+                <div class="card stat-card bg-gradient-warning h-100 p-3">
+                    <div class="card-body position-relative z-1">
+                        <h6 class="text-white text-uppercase fw-bold mb-1" style="opacity: 0.8;">รออนุมัติลา</h6>
+                        <h2 class="display-5 fw-bold text-white mb-0">{{ pending_leaves.count }} <span class="fs-4">รายการ</span></h2>
+                        <div class="mt-2 text-white small opacity-75">
+                            <i class="fa-solid fa-hand-pointer"></i> คลิกเพื่อจัดการ
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-bell card-icon-bg"></i>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="card card-table overflow-hidden">
+        <div class="card-header bg-white py-3 border-0 ps-4">
+            <h5 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-list-check me-2 text-primary"></i> รายชื่อพนักงาน</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-secondary small text-uppercase">
+                        <tr>
+                            <th class="ps-4 py-3 border-0">พนักงาน</th>
+                            <th class="py-3 border-0">ตำแหน่ง</th>
+                            <th class="py-3 border-0">แผนก</th>
+                            <th class="py-3 border-0 text-center">สถานะ</th>
+                            <th class="py-3 border-0 text-end pe-4">เงินเดือน</th>
+                            <th class="py-3 border-0 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in employees %}
+                        <tr>
+                            <td class="ps-4 py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        {% if emp.image %}
+                                            <img src="{{ emp.image.url }}" class="avatar-circle">
+                                        {% else %}
+                                            <div class="avatar-placeholder shadow-sm">
+                                                <i class="fa-solid fa-user"></i>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark">{{ emp.first_name }} {{ emp.last_name }}</div>
+                                        <div class="small text-muted">{{ emp.employee_id|default:"-" }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-light text-dark border fw-normal">{{ emp.position }}</span></td>
+                            <td>{{ emp.department }}</td>
+                            <td class="text-center">
+                                {% if emp.status == 'ACTIVE' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 border border-success border-opacity-25">
+                                        <i class="fa-solid fa-circle-check me-1"></i> ปกติ
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary rounded-pill px-3">{{ emp.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4 fw-bold text-dark">฿ {{ emp.formatted_salary }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'employee_detail' emp.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                    <i class="fa-regular fa-eye me-1"></i> ดูข้อมูล
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-box-open fs-1 mb-3 opacity-25"></i><br>
+                                ไม่พบข้อมูลพนักงาน
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

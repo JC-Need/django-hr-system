@@ -1,24 +1,24 @@
 from django.contrib import admin
-from .models import Employee, Attendance, LeaveRequest # เพิ่ม LeaveRequest
+from .models import Employee, Attendance, LeaveRequest
 
-# 1. พนักงาน
-@admin.register(Employee)
+# ปรับแต่งหน้า Admin ของพนักงาน
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ('emp_id', 'name', 'department', 'status', 'hire_date')
+    # ✅ เปลี่ยนจาก 'name' เป็น 'first_name' และ 'last_name'
+    list_display = ('employee_id', 'first_name', 'last_name', 'position', 'department', 'status')
+    search_fields = ('first_name', 'last_name', 'employee_id')
     list_filter = ('department', 'status')
-    search_fields = ('name', 'emp_id')
-    ordering = ('emp_id',)
 
-# 2. ลงเวลา
-@admin.register(Attendance)
+# ปรับแต่งหน้า Admin ของการตอกบัตร
 class AttendanceAdmin(admin.ModelAdmin):
     list_display = ('employee', 'date', 'time_in', 'time_out')
     list_filter = ('date', 'employee')
-    date_hierarchy = 'date'
 
-# 3. ใบลา (ของใหม่)
-@admin.register(LeaveRequest)
+# ปรับแต่งหน้า Admin ของการลา
 class LeaveRequestAdmin(admin.ModelAdmin):
     list_display = ('employee', 'leave_type', 'start_date', 'end_date', 'status')
-    list_filter = ('status', 'leave_type', 'employee')
-    list_editable = ('status',) # อนุญาตให้กดอนุมัติจากหน้าตารางได้เลย เร็วดี!
+    list_filter = ('status', 'leave_type')
+
+# ลงทะเบียนเข้าสู่ระบบ Admin
+admin.site.register(Employee, EmployeeAdmin)
+admin.site.register(Attendance, AttendanceAdmin)
+admin.site.register(LeaveRequest, LeaveRequestAdmin)
