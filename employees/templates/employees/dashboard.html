@@ -1,185 +1,217 @@
-{% extends 'employees/base_dashboard.html' %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-{% block content %}
-<style>
-    /* การ์ดสถิติ (ไล่สีสวยๆ + มีเงานูนๆ) */
-    .stat-card {
-        border: none;
-        border-radius: 20px;
-        color: white;
-        position: relative;
-        overflow: hidden;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    }
-    
-    /* สีไล่ระดับ (Gradient Colors) */
-    .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .bg-gradient-success { background: linear-gradient(135deg, #2af598 0%, #009efd 100%); }
-    .bg-gradient-warning { background: linear-gradient(135deg, #fccb90 0%, #d57eeb 100%); }
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Sarabun', sans-serif; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); }
+        .icon-box { font-size: 2.5rem; opacity: 0.8; }
+        .chart-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
 
-    /* ไอคอนจางๆ ด้านหลังการ์ด */
-    .card-icon-bg {
-        position: absolute;
-        right: 15px;
-        bottom: 15px;
-        font-size: 4rem;
-        opacity: 0.2;
-        color: white;
-    }
-
-    /* ตารางสวยงาม */
-    .card-table {
-        border: none;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9ff;
-    }
-    
-    /* รูปโปรไฟล์วงกลม */
-    .avatar-circle {
-        width: 45px;
-        height: 45px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #fff;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    .avatar-placeholder {
-        width: 45px;
-        height: 45px;
-        background-color: #e9ecef;
-        color: #adb5bd;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-    }
-</style>
-
-<div class="container-fluid py-4 px-4">
-    
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <div>
-            <h3 class="fw-bold text-dark mb-0">Dashboard ภาพรวม</h3>
-            <p class="text-muted small mb-0">ยินดีต้อนรับกลับ, ผู้ดูแลระบบ!</p>
-        </div>
-        <a href="/admin/employees/employee/add/" target="_blank" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
-            <i class="fa-solid fa-plus me-2"></i> เพิ่มพนักงานใหม่
-        </a>
-    </div>
+<div class="container py-4">
+    <h2 class="mb-4 text-secondary"><i class="fas fa-chart-line"></i> แดชบอร์ดภาพรวม (HR Dashboard)</h2>
 
     <div class="row g-4 mb-5">
-        <div class="col-xl-4 col-md-6">
-            <div class="card stat-card bg-gradient-primary h-100 p-3">
-                <div class="card-body position-relative z-1">
-                    <h6 class="text-white-50 text-uppercase fw-bold mb-1">พนักงานทั้งหมด</h6>
-                    <h2 class="display-5 fw-bold mb-0">{{ total_employees }} <span class="fs-4">คน</span></h2>
-                </div>
-                <i class="fa-solid fa-users card-icon-bg"></i>
-            </div>
-        </div>
-
-        <div class="col-xl-4 col-md-6">
-            <div class="card stat-card bg-gradient-success h-100 p-3">
-                <div class="card-body position-relative z-1">
-                    <h6 class="text-white-50 text-uppercase fw-bold mb-1">เงินเดือนรวม (เดือนนี้)</h6>
-                    <h2 class="display-5 fw-bold mb-0">฿ {{ total_salary }}</h2>
-                </div>
-                <i class="fa-solid fa-sack-dollar card-icon-bg"></i>
-            </div>
-        </div>
-
-        <div class="col-xl-4 col-md-6">
-            <a href="{% url 'leave_approval' %}" class="text-decoration-none">
-                <div class="card stat-card bg-gradient-warning h-100 p-3">
-                    <div class="card-body position-relative z-1">
-                        <h6 class="text-white text-uppercase fw-bold mb-1" style="opacity: 0.8;">รออนุมัติลา</h6>
-                        <h2 class="display-5 fw-bold text-white mb-0">{{ pending_leaves.count }} <span class="fs-4">รายการ</span></h2>
-                        <div class="mt-2 text-white small opacity-75">
-                            <i class="fa-solid fa-hand-pointer"></i> คลิกเพื่อจัดการ
-                        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-primary h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">พนักงานทั้งหมด</h6>
+                        <h2 class="display-6 fw-bold">{{ total_employees }}</h2> <p class="card-text small">คน</p>
                     </div>
-                    <i class="fa-solid fa-bell card-icon-bg"></i>
+                    <div class="icon-box"><i class="fas fa-users"></i></div>
                 </div>
-            </a>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-success h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">เงินเดือนรวม</h6>
+                        <h2 class="display-6 fw-bold">{{ total_salary }}</h2> <p class="card-text small">บาท</p>
+                    </div>
+                    <div class="icon-box"><i class="fas fa-money-bill-wave"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-warning h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">คำขอลา (รออนุมัติ)</h6>
+                        <h2 class="display-6 fw-bold">{{ pending_leaves }}</h2> <p class="card-text small">รายการ</p>
+                    </div>
+                    <div class="icon-box"><i class="fas fa-clock"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-danger h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">ขาดงานวันนี้</h6>
+                        <h2 class="display-6 fw-bold">{{ absent_today }}</h2> <p class="card-text small">คน</p>
+                    </div>
+                    <div class="icon-box"><i class="fas fa-user-times"></i></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="card card-table overflow-hidden">
-        <div class="card-header bg-white py-3 border-0 ps-4">
-            <h5 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-list-check me-2 text-primary"></i> รายชื่อพนักงาน</h5>
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="chart-container">
+                <h5 class="text-muted mb-3">สถิติการมาทำงาน (7 วันล่าสุด)</h5>
+                <canvas id="barChart"></canvas>
+            </div>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light text-secondary small text-uppercase">
-                        <tr>
-                            <th class="ps-4 py-3 border-0">พนักงาน</th>
-                            <th class="py-3 border-0">ตำแหน่ง</th>
-                            <th class="py-3 border-0">แผนก</th>
-                            <th class="py-3 border-0 text-center">สถานะ</th>
-                            <th class="py-3 border-0 text-end pe-4">เงินเดือน</th>
-                            <th class="py-3 border-0 text-center">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for emp in employees %}
-                        <tr>
-                            <td class="ps-4 py-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="me-3">
-                                        {% if emp.image %}
-                                            <img src="{{ emp.image.url }}" class="avatar-circle">
-                                        {% else %}
-                                            <div class="avatar-placeholder shadow-sm">
-                                                <i class="fa-solid fa-user"></i>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold text-dark">{{ emp.first_name }} {{ emp.last_name }}</div>
-                                        <div class="small text-muted">{{ emp.employee_id|default:"-" }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td><span class="badge bg-light text-dark border fw-normal">{{ emp.position }}</span></td>
-                            <td>{{ emp.department }}</td>
-                            <td class="text-center">
-                                {% if emp.status == 'ACTIVE' %}
-                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 border border-success border-opacity-25">
-                                        <i class="fa-solid fa-circle-check me-1"></i> ปกติ
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-secondary rounded-pill px-3">{{ emp.get_status_display }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end pe-4 fw-bold text-dark">฿ {{ emp.formatted_salary }}</td>
-                            <td class="text-center">
-                                <a href="{% url 'employee_detail' emp.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
-                                    <i class="fa-regular fa-eye me-1"></i> ดูข้อมูล
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
-                                <i class="fa-solid fa-box-open fs-1 mb-3 opacity-25"></i><br>
-                                ไม่พบข้อมูลพนักงาน
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h5 class="text-muted mb-3">สัดส่วนประเภทพนักงาน</h5>
+                <canvas id="pieChart"></canvas>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // --- ตั้งค่ากราฟแท่ง (Bar Chart) ---
+    const ctxBar = document.getElementById('barChart').getContext('2d');
+    new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์'],
+            datasets: [{
+                label: 'จำนวนคนมาสาย',
+                data: [2, 1, 3, 0, 1, 0], // ข้อมูลสมมติ
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: { responsive: true }
+    });
+
+    // --- ตั้งค่ากราฟวงกลม (Pie Chart) ---
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'doughnut', // แบบโดนัท
+        data: {
+            labels: ['พนักงานประจำ', 'พนักงานชั่วคราว', 'ทดลองงาน'],
+            datasets: [{
+                data: [10, 5, 2], // ข้อมูลสมมติ
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(255, 99, 132, 0.7)'
+                ],
+            }]
+        },
+        options: { responsive: true }
+    });
+<script>
+    // --- ตั้งค่ากราฟแท่ง (Bar Chart) ---
+    const ctxBar = document.getElementById('barChart').getContext('2d');
+    new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            // รับค่าวันที่จาก Python
+            labels: {{ bar_labels|safe }},
+            datasets: [{
+                label: 'จำนวนคนมาทำงาน',
+                // รับค่าจำนวนคนจาก Python
+                data: {{ bar_data|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } } // แกน Y เริ่มที่ 0 และเพิ่มทีละ 1 คน
+            }
+        }
+    });
+
+    // --- ตั้งค่ากราฟวงกลม (Pie Chart) ---
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+            labels: ['มาทันเวลา', 'มาสาย', 'ขาดงาน'],
+            datasets: [{
+                // รับค่าสถานะจาก Python
+                data: {{ pie_data|safe }},
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.7)', // เขียว (ทันเวลา)
+                    'rgba(255, 206, 86, 0.7)', // เหลือง (สาย)
+                    'rgba(255, 99, 132, 0.7)'  // แดง (ขาด)
+                ],
+            }]
+        },
+        options: { responsive: true }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // --- ตั้งค่ากราฟแท่ง (Bar Chart) ---
+    const ctxBar = document.getElementById('barChart').getContext('2d');
+    new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: {{ bar_labels|safe }},
+            datasets: [{
+                label: 'จำนวนคนมาทำงาน',
+                data: {{ bar_data|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            }
+        }
+    });
+
+    // --- ตั้งค่ากราฟวงกลม (Pie Chart) ---
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+            labels: ['มาทันเวลา', 'มาสาย', 'ขาดงาน'],
+            datasets: [{
+                data: {{ pie_data|safe }},
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.7)', // เขียว
+                    'rgba(255, 206, 86, 0.7)', // เหลือง
+                    'rgba(255, 99, 132, 0.7)'  // แดง
+                ],
+            }]
+        },
+        options: { responsive: true }
+    });
+</script>
+</body>
+</html>
+</body>
+</html>
