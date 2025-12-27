@@ -14,13 +14,12 @@ class Employee(models.Model):
     # เชื่อมกับ User ของ Django
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     
-    # ✅ ข้อมูลพื้นฐาน (ปรับใหม่: แยกชื่อ-นามสกุล + เพิ่มรูป)
+    # ✅ ข้อมูลพื้นฐาน
     employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True, verbose_name="รหัสพนักงาน")
-    
     first_name = models.CharField(max_length=100, verbose_name="ชื่อจริง", default="")
     last_name = models.CharField(max_length=100, verbose_name="นามสกุล", default="")
     
-    # ✅ ช่องเก็บรูป (ต้องติดตั้ง Pillow ก่อนนะ)
+    # ✅ ช่องเก็บรูป (ใช้ชื่อตัวแปรว่า image ตามที่คุณตั้งไว้)
     image = models.ImageField(upload_to='employee_images/', blank=True, null=True, verbose_name="รูปโปรไฟล์")
 
     position = models.CharField(max_length=100, verbose_name="ตำแหน่ง")
@@ -41,7 +40,6 @@ class Employee(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.position})"
 
-    # ฟังก์ชันช่วยจัดรูปแบบเงิน (เผื่อเรียกใช้)
     @property
     def formatted_salary(self):
         return "{:,.2f}".format(self.base_allowance)

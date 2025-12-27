@@ -1,9 +1,21 @@
-{% extends 'employees/base_dashboard.html' %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายการรออนุมัติ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>body { background-color: #f4f6f9; font-family: 'Sarabun', sans-serif; }</style>
+</head>
+<body>
 
-{% block content %}
-<div class="container py-4">
+<div class="container py-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold"><i class="fa-solid fa-list-check me-2"></i> รายการรออนุมัติ (Pending Requests)</h3>
+        <h3 class="fw-bold text-secondary">
+            <i class="fa-solid fa-list-check me-2"></i> รายการรออนุมัติ (Pending Requests)
+        </h3>
         <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary rounded-pill px-4">
             <i class="fa-solid fa-arrow-left"></i> กลับหน้าหลัก
         </a>
@@ -19,6 +31,7 @@
                             <th class="py-3">ประเภท</th>
                             <th class="py-3">วันที่ลา</th>
                             <th class="py-3 text-start">เหตุผล</th>
+                            <th class="py-3">วันที่ยื่น</th>
                             <th class="py-3">จัดการ</th>
                         </tr>
                     </thead>
@@ -29,12 +42,16 @@
                                 <div class="fw-bold">{{ leave.employee.first_name }} {{ leave.employee.last_name }}</div>
                                 <small class="text-muted">{{ leave.employee.department }}</small>
                             </td>
-                            <td><span class="badge bg-secondary text-dark bg-opacity-10 border">{{ leave.get_leave_type_display }}</span></td>
+                            <td>
+                                <span class="badge bg-secondary text-dark bg-opacity-10 border">
+                                    {{ leave.leave_type }}
+                                </span>
+                            </td>
                             <td class="fw-bold text-primary">
                                 {{ leave.start_date|date:"d M" }} - {{ leave.end_date|date:"d M Y" }}
-                                <div class="small text-muted fw-normal">({{ leave.days }} วัน)</div>
-                            </td>
+                                </td>
                             <td class="text-start fst-italic text-muted">"{{ leave.reason }}"</td>
+                            <td>{{ leave.created_at|date:"d/m H:i" }}</td>
                             <td>
                                 <div class="d-flex justify-content-center gap-2">
                                     <a href="{% url 'approve_leave' leave.id %}" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm">
@@ -48,7 +65,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="py-5 text-center text-muted">
+                            <td colspan="6" class="py-5 text-center text-muted">
                                 <i class="fa-solid fa-clipboard-check fs-1 mb-3 opacity-25"></i><br>
                                 ไม่มีรายการรออนุมัติครับบอส! 🎉
                             </td>
@@ -60,4 +77,6 @@
         </div>
     </div>
 </div>
-{% endblock %}
+
+</body>
+</html>

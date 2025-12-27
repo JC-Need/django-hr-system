@@ -108,3 +108,13 @@ LOGOUT_REDIRECT_URL = 'login'
 LOGIN_URL = 'login'                 # ถ้ายังไม่ล็อกอิน ให้ดีดมาหน้านี้
 LOGIN_REDIRECT_URL = 'dashboard'    # ถ้าล็อกอินผ่านแล้ว ให้เด้งไปหน้านี้
 LOGOUT_REDIRECT_URL = 'login'       # ถ้ากด Logout ให้กลับมาหน้า Login
+# ==========================================
+# ตั้งค่าการเก็บไฟล์รูปภาพ (Media)
+# ==========================================
+import os
+
+# URL ที่ใช้เรียกดูรูปในหน้าเว็บ
+MEDIA_URL = '/media/'
+
+# โฟลเดอร์จริงๆ ในเครื่องที่จะเก็บไฟล์
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
