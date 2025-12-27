@@ -22,4 +22,7 @@ urlpatterns = [
     # 5. ฟังก์ชันเสริม
     path('employee/delete/<int:emp_id>/', views.delete_employee, name='delete_employee'),
     path('attendance/<int:emp_id>/', views.attendance_action, name='attendance_action'),
+
+    # 6. หน้ารายละเอียดแผนก
+    path('department/<str:dept_name>/', views.department_detail, name='department_detail'),
 ]

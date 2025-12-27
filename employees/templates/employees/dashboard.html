@@ -1,3 +1,4 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -46,7 +47,7 @@
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title">เงินเดือนรวม</h6>
-                        <h2 class="display-6 fw-bold">{{ total_salary }}</h2>
+                        <h2 class="display-6 fw-bold">{{ total_salary|intcomma }}</h2>
                         <p class="card-text small">บาท</p>
                     </div>
                     <div class="icon-box"><i class="fas fa-money-bill-wave"></i></div>
@@ -175,11 +176,27 @@
                             <tbody>
                                 {% for dept in dept_summary %}
                                 <tr>
-                                    <td class="fw-bold">{{ dept.department|default:"ไม่ระบุ" }}</td>
+                                    <td class="fw-bold">
+                                        {% if dept.department %}
+                                            <a href="{% url 'department_detail' dept.department %}" class="text-decoration-none text-primary">
+                                                {{ dept.department }} <i class="fas fa-external-link-alt small"></i>
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">ไม่ระบุแผนก</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="text-center">
                                         <span class="badge bg-info text-dark rounded-pill">{{ dept.count }}</span>
                                     </td>
-                                    <td class="text-end fw-bold text-success">{{ dept.total_salary|floatformat:2 }}</td>
+                                    <td class="text-end fw-bold">
+                                        {% if dept.department %}
+                                            <a href="{% url 'department_detail' dept.department %}" class="text-decoration-none text-success">
+                                                {{ dept.total_salary|floatformat:2|intcomma }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-success">{{ dept.total_salary|floatformat:2|intcomma }}</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="text-center">
                                         <div class="progress" style="height: 5px; width: 60px; margin: auto;">
                                             <div class="progress-bar bg-primary" style="width: 75%"></div>
@@ -237,3 +254,39 @@
     new Chart(ctxBar, {
         type: 'bar',
         data: {
+            labels: {{ bar_labels|safe }},
+            datasets: [{
+                label: 'จำนวนคนมาทำงาน',
+                data: {{ bar_data|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    // --- ตั้งค่ากราฟวงกลม (Pie Chart) ---
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+            labels: ['มาทันเวลา', 'มาสาย', 'ขาดงาน'],
+            datasets: [{
+                data: {{ pie_data|safe }},
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(255, 99, 132, 0.7)'
+                ],
+            }]
+        },
+        options: { responsive: true }
+    });
+</script>
+
+</body>
+</html>

@@ -89,7 +89,7 @@ def dashboard(request):
     # ส่งข้อมูลเข้ากล่อง Context
     # [ใหม่ 3] --- Activity Feed (ความเคลื่อนไหวล่าสุดวันนี้) ---
     activities = []
-    
+
     # 1. ดึงคน "เข้างาน" วันนี้
     recent_atts = Attendance.objects.filter(date=today, time_in__isnull=False)
     for att in recent_atts:
@@ -114,7 +114,7 @@ def dashboard(request):
             'color': 'text-warning',  # สีส้ม
             'bg': 'bg-warning-subtle'
         })
-    
+
     # 3. เรียงลำดับตามเวลา (ล่าสุดขึ้นก่อน)
     activities.sort(key=lambda x: x['time'], reverse=True)
     context = {
@@ -293,3 +293,17 @@ def attendance_action(request, emp_id):
 
     attendance.save()
     return redirect('employee_detail', emp_id=emp_id)
+
+# ==========================================
+# 5. หน้ารายละเอียดแผนก (Department Detail)
+# ==========================================
+@login_required
+def department_detail(request, dept_name):
+    # ดึงรายชื่อพนักงาน โดยกรองเฉพาะแผนกที่ส่งมา (dept_name)
+    employees = Employee.objects.filter(department=dept_name)
+
+    context = {
+        'dept_name': dept_name,
+        'employees': employees,
+    }
+    return render(request, 'employees/department_detail.html', context)
