@@ -6,7 +6,7 @@
     <title>HR Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
+    
     <style>
         body { background-color: #f4f6f9; font-family: 'Sarabun', sans-serif; }
         .card { border: none; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s; }
@@ -18,51 +18,60 @@
 <body>
 
 <div class="container py-4">
-    <h2 class="mb-4 text-secondary"><i class="fas fa-chart-line"></i> แดชบอร์ดภาพรวม (HR Dashboard)</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-secondary"><i class="fas fa-chart-line"></i> แดชบอร์ดภาพรวม (HR Dashboard)</h2>
+        <form action="{% url 'logout' %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+            </button>
+        </form>
+    </div>
 
-    <div class="row g-4 mb-5">
+    <div class="row g-4 mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-primary h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title">พนักงานทั้งหมด</h6>
-                        <h2 class="display-6 fw-bold">{{ total_employees }}</h2> <p class="card-text small">คน</p>
+                        <h2 class="display-6 fw-bold">{{ total_employees }}</h2>
+                        <p class="card-text small">คน</p>
                     </div>
                     <div class="icon-box"><i class="fas fa-users"></i></div>
                 </div>
             </div>
         </div>
-
         <div class="col-md-3">
             <div class="card text-white bg-success h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title">เงินเดือนรวม</h6>
-                        <h2 class="display-6 fw-bold">{{ total_salary }}</h2> <p class="card-text small">บาท</p>
+                        <h2 class="display-6 fw-bold">{{ total_salary }}</h2>
+                        <p class="card-text small">บาท</p>
                     </div>
                     <div class="icon-box"><i class="fas fa-money-bill-wave"></i></div>
                 </div>
             </div>
         </div>
-
         <div class="col-md-3">
             <div class="card text-white bg-warning h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title">คำขอลา (รออนุมัติ)</h6>
-                        <h2 class="display-6 fw-bold">{{ pending_leaves }}</h2> <p class="card-text small">รายการ</p>
+                        <h2 class="display-6 fw-bold">{{ pending_leaves }}</h2>
+                        <p class="card-text small">รายการ</p>
                     </div>
                     <div class="icon-box"><i class="fas fa-clock"></i></div>
                 </div>
             </div>
         </div>
-
         <div class="col-md-3">
             <div class="card text-white bg-danger h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title">ขาดงานวันนี้</h6>
-                        <h2 class="display-6 fw-bold">{{ absent_today }}</h2> <p class="card-text small">คน</p>
+                        <h2 class="display-6 fw-bold">{{ absent_today }}</h2>
+                        <p class="card-text small">คน</p>
                     </div>
                     <div class="icon-box"><i class="fas fa-user-times"></i></div>
                 </div>
@@ -70,148 +79,161 @@
         </div>
     </div>
 
-    <div class="row g-4">
+    <div class="row g-4 mb-4">
         <div class="col-md-8">
-            <div class="chart-container">
+            <div class="chart-container h-100">
                 <h5 class="text-muted mb-3">สถิติการมาทำงาน (7 วันล่าสุด)</h5>
                 <canvas id="barChart"></canvas>
             </div>
         </div>
-
         <div class="col-md-4">
-            <div class="chart-container">
+            <div class="chart-container h-100">
                 <h5 class="text-muted mb-3">สัดส่วนประเภทพนักงาน</h5>
                 <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-warning text-dark py-3">
+                    <h5 class="m-0 fw-bold"><i class="fas fa-umbrella-beach"></i> พนักงานที่ลาวันนี้</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        {% for leave in on_leave_list %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ leave.employee.first_name }} {{ leave.employee.last_name }}</strong>
+                                <br><small class="text-muted">{{ leave.employee.department }}</small>
+                            </div>
+                            <span class="badge bg-secondary rounded-pill">{{ leave.leave_type }}</span>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-center text-muted py-4">ไม่มีใครลาวันนี้</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-danger text-white py-3">
+                    <h5 class="m-0 fw-bold"><i class="fas fa-user-slash"></i> ขาดงาน / ยังไม่ลงเวลา</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ชื่อ-สกุล</th>
+                                    <th>แผนก</th>
+                                    <th>เบอร์โทร</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp in absent_list %}
+                                <tr>
+                                    <td>{{ emp.first_name }} {{ emp.last_name }}</td>
+                                    <td><span class="badge bg-light text-dark border">{{ emp.department }}</span></td>
+                                    <td><a href="tel:{{ emp.phone }}" class="text-decoration-none">{{ emp.phone }}</a></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-success py-4">
+                                        <i class="fas fa-check-circle fa-2x mb-2"></i><br>
+                                        ทุกคนมาครบแล้ว!
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-5">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="m-0 font-weight-bold text-primary">📊 สรุปข้อมูลแยกตามแผนก</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ชื่อแผนก</th>
+                                    <th class="text-center">พนักงาน</th>
+                                    <th class="text-end">เงินเดือนรวม</th>
+                                    <th class="text-center">สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dept in dept_summary %}
+                                <tr>
+                                    <td class="fw-bold">{{ dept.department|default:"ไม่ระบุ" }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info text-dark rounded-pill">{{ dept.count }}</span>
+                                    </td>
+                                    <td class="text-end fw-bold text-success">{{ dept.total_salary|floatformat:2 }}</td>
+                                    <td class="text-center">
+                                        <div class="progress" style="height: 5px; width: 60px; margin: auto;">
+                                            <div class="progress-bar bg-primary" style="width: 75%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center text-muted">ไม่พบข้อมูล</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="m-0 font-weight-bold text-dark">🔔 ความเคลื่อนไหว</h5>
+                    <span class="badge bg-danger">สด!</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for act in activities %}
+                        <div class="list-group-item d-flex align-items-center p-3 border-bottom-0">
+                            <div class="me-3 d-flex align-items-center justify-content-center rounded-circle {{ act.bg }}" style="width: 45px; height: 45px;">
+                                <i class="fas {{ act.icon }} {{ act.color }} fa-lg"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.95rem;">{{ act.text }}</h6>
+                                <small class="text-muted"><i class="far fa-clock"></i> {{ act.time|time:"H:i" }} น.</small>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-bed fa-3x mb-3 opacity-25"></i>
+                            <p>ยังไม่มีความเคลื่อนไหววันนี้</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer bg-light text-center small text-muted">
+                    อัปเดตล่าสุด: วันนี้
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
     // --- ตั้งค่ากราฟแท่ง (Bar Chart) ---
     const ctxBar = document.getElementById('barChart').getContext('2d');
     new Chart(ctxBar, {
         type: 'bar',
         data: {
-            labels: ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์'],
-            datasets: [{
-                label: 'จำนวนคนมาสาย',
-                data: [2, 1, 3, 0, 1, 0], // ข้อมูลสมมติ
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: { responsive: true }
-    });
-
-    // --- ตั้งค่ากราฟวงกลม (Pie Chart) ---
-    const ctxPie = document.getElementById('pieChart').getContext('2d');
-    new Chart(ctxPie, {
-        type: 'doughnut', // แบบโดนัท
-        data: {
-            labels: ['พนักงานประจำ', 'พนักงานชั่วคราว', 'ทดลองงาน'],
-            datasets: [{
-                data: [10, 5, 2], // ข้อมูลสมมติ
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.7)',
-                    'rgba(255, 206, 86, 0.7)',
-                    'rgba(255, 99, 132, 0.7)'
-                ],
-            }]
-        },
-        options: { responsive: true }
-    });
-<script>
-    // --- ตั้งค่ากราฟแท่ง (Bar Chart) ---
-    const ctxBar = document.getElementById('barChart').getContext('2d');
-    new Chart(ctxBar, {
-        type: 'bar',
-        data: {
-            // รับค่าวันที่จาก Python
-            labels: {{ bar_labels|safe }},
-            datasets: [{
-                label: 'จำนวนคนมาทำงาน',
-                // รับค่าจำนวนคนจาก Python
-                data: {{ bar_data|safe }},
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } } // แกน Y เริ่มที่ 0 และเพิ่มทีละ 1 คน
-            }
-        }
-    });
-
-    // --- ตั้งค่ากราฟวงกลม (Pie Chart) ---
-    const ctxPie = document.getElementById('pieChart').getContext('2d');
-    new Chart(ctxPie, {
-        type: 'doughnut',
-        data: {
-            labels: ['มาทันเวลา', 'มาสาย', 'ขาดงาน'],
-            datasets: [{
-                // รับค่าสถานะจาก Python
-                data: {{ pie_data|safe }},
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.7)', // เขียว (ทันเวลา)
-                    'rgba(255, 206, 86, 0.7)', // เหลือง (สาย)
-                    'rgba(255, 99, 132, 0.7)'  // แดง (ขาด)
-                ],
-            }]
-        },
-        options: { responsive: true }
-    });
-</script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-    // --- ตั้งค่ากราฟแท่ง (Bar Chart) ---
-    const ctxBar = document.getElementById('barChart').getContext('2d');
-    new Chart(ctxBar, {
-        type: 'bar',
-        data: {
-            labels: {{ bar_labels|safe }},
-            datasets: [{
-                label: 'จำนวนคนมาทำงาน',
-                data: {{ bar_data|safe }},
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } }
-            }
-        }
-    });
-
-    // --- ตั้งค่ากราฟวงกลม (Pie Chart) ---
-    const ctxPie = document.getElementById('pieChart').getContext('2d');
-    new Chart(ctxPie, {
-        type: 'doughnut',
-        data: {
-            labels: ['มาทันเวลา', 'มาสาย', 'ขาดงาน'],
-            datasets: [{
-                data: {{ pie_data|safe }},
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.7)', // เขียว
-                    'rgba(255, 206, 86, 0.7)', // เหลือง
-                    'rgba(255, 99, 132, 0.7)'  // แดง
-                ],
-            }]
-        },
-        options: { responsive: true }
-    });
-</script>
-</body>
-</html>
-</body>
-</html>

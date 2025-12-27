@@ -1,4 +1,4 @@
-from django.db.models import Sum
+from django.db.models import Sum, Count
 import json
 from datetime import timedelta  # เพิ่มตัวนี้เข้ามาด้วยนะครับ
 from django.shortcuts import render, get_object_or_404, redirect
@@ -48,6 +48,27 @@ def dashboard(request):
     # ขาดงานวันนี้ (จำนวนพนักงานทั้งหมด - จำนวนคนที่เช็คชื่อวันนี้)
     present_count = Attendance.objects.filter(date=today).count()
     absent_today = total_employees - present_count
+    # [ใหม่ 2] --- เจาะลึกคนขาด/คนลา (Absence Insight) ---
+    # 1. ดึงรายชื่อคนที่ "ลาวันนี้" (สถานะ APPROVED)
+    on_leave_list = LeaveRequest.objects.filter(
+        start_date__lte=today,
+        end_date__gte=today,
+        status='APPROVED'
+    )
+    # 2. ดึงรายชื่อคนที่ "ขาดงาน" (ไม่ได้มาทำงาน และ ไม่ได้ลา)
+    # 2.1 หา ID คนที่มาทำงานแล้ว
+    present_ids = Attendance.objects.filter(date=today).values_list('employee_id', flat=True)
+    # 2.2 หา ID คนที่ลาวันนี้
+    leave_ids = on_leave_list.values_list('employee_id', flat=True)
+
+    # 2.3 คัดกรอง: เอาพนักงานทั้งหมด "ลบ" คนมา "ลบ" คนลา = คนขาดงานจริงๆ
+    absent_list = Employee.objects.exclude(id__in=present_ids).exclude(id__in=leave_ids)
+    # [ใหม่] --- ข้อมูลแยกตามแผนก (Department Analysis) ---
+    # คำสั่งนี้จะจัดกลุ่มตาม 'department' แล้วนับจำนวนคน (count) และรวมเงินเดือน (sum)
+    dept_summary = Employee.objects.values('department').annotate(
+        count=Count('id'),
+        total_salary=Sum('base_allowance')
+    ).order_by('-total_salary') # เรียงตามเงินเดือนมากไปน้อย
 
     # --- ข้อมูลกราฟแท่ง (Bar Chart): สถิติคนมาทำงาน 7 วันย้อนหลัง ---
     bar_labels = [] # วันที่
@@ -66,6 +87,36 @@ def dashboard(request):
     on_time_count = present_count - late_count
 
     # ส่งข้อมูลเข้ากล่อง Context
+    # [ใหม่ 3] --- Activity Feed (ความเคลื่อนไหวล่าสุดวันนี้) ---
+    activities = []
+    
+    # 1. ดึงคน "เข้างาน" วันนี้
+    recent_atts = Attendance.objects.filter(date=today, time_in__isnull=False)
+    for att in recent_atts:
+        activities.append({
+            'time': att.time_in, # เวลาเข้า
+            'text': f"{att.employee.first_name} ลงเวลาเข้างาน",
+            'icon': 'fa-fingerprint', # ไอคอนนิ้วมือ
+            'color': 'text-success',  # สีเขียว
+            'bg': 'bg-success-subtle' # พื้นหลังจางๆ
+        })
+
+    # 2. ดึงคน "ยื่นใบลา" วันนี้
+    # (ใช้ created_at__date=today เพื่อดูเฉพาะที่ยื่นวันนี้)
+    recent_leaves = LeaveRequest.objects.filter(created_at__date=today)
+    for leave in recent_leaves:
+        # แปลงเวลาให้เป็น Local Time เพื่อแสดงผล
+        local_time = timezone.localtime(leave.created_at).time()
+        activities.append({
+            'time': local_time,
+            'text': f"{leave.employee.first_name} ยื่นใบลา ({leave.leave_type})",
+            'icon': 'fa-paper-plane', # ไอคอนจรวดกระดาษ
+            'color': 'text-warning',  # สีส้ม
+            'bg': 'bg-warning-subtle'
+        })
+    
+    # 3. เรียงลำดับตามเวลา (ล่าสุดขึ้นก่อน)
+    activities.sort(key=lambda x: x['time'], reverse=True)
     context = {
         # การ์ด
         'total_employees': total_employees,
@@ -77,6 +128,12 @@ def dashboard(request):
         'bar_labels': json.dumps(bar_labels),
         'bar_data': json.dumps(bar_data),
         'pie_data': json.dumps([on_time_count, late_count, absent_today]),
+        'dept_summary': dept_summary,
+        # [ใหม่] ส่งรายชื่อไปหน้าเว็บ
+        'on_leave_list': on_leave_list,
+        'absent_list': absent_list,
+	# [ใหม่] ส่ง Activity Feed ไปหน้าเว็บ
+        'activities': activities[:6], # ส่งไปแค่ 6 รายการล่าสุดพอ (กันรก)
     }
 
     return render(request, 'employees/dashboard.html', context)
