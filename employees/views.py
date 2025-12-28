@@ -9,6 +9,7 @@ from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Employee, Attendance, LeaveRequest
 from .forms import LeaveRequestForm
+from django.contrib.auth.models import User
 
 import datetime
 from datetime import timedelta
@@ -146,9 +147,24 @@ def dashboard(request):
 @login_required
 def employee_detail(request, emp_id):
     employee = get_object_or_404(Employee, pk=emp_id)
-    attendance_list = Attendance.objects.filter(employee=employee).order_by('-date')
-    start_work_time = datetime.time(9, 0, 0)
 
+    # 1. ดึงข้อมูลทั้งหมดมาก่อน (เรียงจากใหม่ไปเก่า)
+    attendance_list = Attendance.objects.filter(employee=employee).order_by('-date')
+    leave_list = LeaveRequest.objects.filter(employee=employee).order_by('-start_date')
+
+    # 2. 👇👇 ส่วนกรองวันที่ (Search Logic) 👇👇
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    if start_date and end_date:
+        # กรองเวลาเข้า-ออก (ใช้ field 'date')
+        attendance_list = attendance_list.filter(date__range=[start_date, end_date])
+        # กรองประวัติการลา (เช็คว่าวันเริ่มลา อยู่ในช่วงที่เลือกไหม)
+        leave_list = leave_list.filter(start_date__gte=start_date, start_date__lte=end_date)
+    # 👆👆 -------------------------------- 👆👆
+
+    # 3. คำนวณสถานะ มาสาย/ขาดงาน (Code เดิม)
+    start_work_time = datetime.time(9, 0, 0)
     for att in attendance_list:
         if att.time_in:
             check_time = att.time_in
@@ -163,8 +179,7 @@ def employee_detail(request, emp_id):
             att.status_label = "ขาดงาน ❌"
             att.status_color = "danger"
 
-    leave_list = LeaveRequest.objects.filter(employee=employee).order_by('-start_date')
-
+    # 4. คำนวณโบนัส (Code เดิม)
     base_bonus = 10000
     sick_count = LeaveRequest.objects.filter(employee=employee, leave_type='SICK', status='APPROVED').count()
     business_count = LeaveRequest.objects.filter(employee=employee, leave_type='BUSINESS', status='APPROVED').count()
@@ -178,8 +193,10 @@ def employee_detail(request, emp_id):
         'formatted_bonus': "{:,.2f}".format(final_bonus_val),
         'total_deduct': "{:,.0f}".format(total_deduct),
         'base_bonus': "{:,.0f}".format(base_bonus),
-        'sick_count': sick_count, 'sick_deduct': "{:,.0f}".format(sick_count * 500),
-        'business_count': business_count, 'business_deduct': "{:,.0f}".format(business_count * 1000),
+        'sick_count': sick_count,
+        'sick_deduct': "{:,.0f}".format(sick_count * 500),
+        'business_count': business_count,
+        'business_deduct': "{:,.0f}".format(business_count * 1000),
     })
 
 # ==========================================
@@ -222,11 +239,20 @@ def approve_leave(request, leave_id):
     leave = get_object_or_404(LeaveRequest, pk=leave_id)
     leave.status = 'APPROVED'
     leave.save()
+
+    # 👇👇 ส่วนสำคัญ: ส่งไลน์กลับไปหาพนักงาน 👇👇
     try:
+        # เช็คว่าพนักงานคนนี้มี Line User ID หรือยัง?
         if leave.employee.line_user_id:
-            msg = f"✅ อนุมัติแล้ว!\nใบลาของ: {leave.employee.first_name}\nวันที่: {leave.start_date}"
+            msg = f"✅ อนุมัติแล้ว!\n------------------\nถึง: {leave.employee.first_name}\nวันที่ลา: {leave.start_date}\n\nพักผ่อนให้เต็มที่นะครับ! 🏖️"
+            # ส่งหาพนักงานโดยเฉพาะ (ระบุ ID ปลายทาง)
             send_line_alert(msg, leave.employee.line_user_id)
-    except: pass
+        else:
+            print("⚠️ ไม่พบ Line User ID ของพนักงานคนนี้")
+    except Exception as e:
+        print(f"Error sending LINE: {e}")
+    # 👆👆 ---------------------------------- 👆👆
+
     return redirect('dashboard')
 
 @login_required
@@ -235,11 +261,15 @@ def reject_leave(request, leave_id):
     leave = get_object_or_404(LeaveRequest, pk=leave_id)
     leave.status = 'REJECTED'
     leave.save()
+
+    # 👇👇 ส่วนสำคัญ: แจ้งผลปฏิเสธ 👇👇
     try:
         if leave.employee.line_user_id:
-            msg = f"❌ ปฏิเสธคำขอ!\nใบลาของ: {leave.employee.first_name}\nเหตุผล: {leave.reason}"
+            msg = f"❌ ไม่อนุมัติ\n------------------\nถึง: {leave.employee.first_name}\nเหตุผล: งานเร่งด่วน\n\nโปรดติดต่อหัวหน้างานครับ"
             send_line_alert(msg, leave.employee.line_user_id)
     except: pass
+    # 👆👆 ---------------------------------- 👆👆
+
     return redirect('dashboard')
 
 @login_required
@@ -314,8 +344,6 @@ def line_webhook(request):
 # ==========================================
 # 7. หน้าจัดการผู้ใช้งาน (User Management)
 # ==========================================
-from django.contrib.auth.models import User
-
 @login_required
 @user_passes_test(is_admin)
 def user_list(request):
