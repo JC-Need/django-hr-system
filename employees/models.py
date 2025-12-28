@@ -24,6 +24,10 @@ class Employee(models.Model):
 
     position = models.CharField(max_length=100, verbose_name="ตำแหน่ง")
     department = models.CharField(max_length=100, verbose_name="แผนก")
+
+    # 👇👇👇 (ส่วนที่เพิ่ม) เก็บ LINE User ID เพื่อส่งแจ้งเตือน 👇👇👇
+    line_user_id = models.CharField(max_length=50, blank=True, null=True, help_text="ใส่ User ID ของ LINE (U...) เพื่อรับแจ้งเตือน")
+    # 👆👆👆 ----------------------------------------------------- 👆👆👆
     
     # เงินๆ ทองๆ
     base_allowance = models.DecimalField(max_digits=10, decimal_places=2, default=15000, verbose_name="เงินเดือน")

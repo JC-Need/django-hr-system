@@ -62,26 +62,20 @@ WSGI_APPLICATION = 'mycompany.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'JCNeed1975$hr_db',    # 👈 ชื่อ Database เต็มๆ (ที่มี $ คั่น)
+        'USER': 'JCNeed1975',          # 👈 Username ของคุณ
+        'PASSWORD': 'HrSystem2025',     # 👈 ⚠️ แก้ตรงนี้! ใส่รหัสผ่าน Database ที่ตั้งในข้อ 1
+        'HOST': 'JCNeed1975.mysql.pythonanywhere-services.com', # 👈 Database host (อันยาวๆ)
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 
 # Password validation
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+AUTH_PASSWORD_VALIDATORS = []
 
 # Internationalization
 LANGUAGE_CODE = 'th'
@@ -98,16 +92,17 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Login/Logout Settings
-LOGIN_URL = 'login'
+# ==========================================
+# ตั้งค่าการล็อกอิน/ล็อกเอาท์
+# ==========================================
+# ถ้ายังไม่ล็อกอิน ให้ดีดมาที่หน้าแรก (Home)
+LOGIN_URL = '/'
+
+# พอล็อกอินเสร็จ ให้ไป Dashboard
 LOGIN_REDIRECT_URL = 'dashboard'
-LOGOUT_REDIRECT_URL = 'login'
-# ==========================================
-# Login / Logout Settings
-# ==========================================
-LOGIN_URL = 'login'                 # ถ้ายังไม่ล็อกอิน ให้ดีดมาหน้านี้
-LOGIN_REDIRECT_URL = 'dashboard'    # ถ้าล็อกอินผ่านแล้ว ให้เด้งไปหน้านี้
-LOGOUT_REDIRECT_URL = 'login'       # ถ้ากด Logout ให้กลับมาหน้า Login
+
+# พอล็อกเอาท์เสร็จ ให้กลับมาหน้าแรก (Home) 👈 ตัวนี้แหละครับที่ช่วยแก้ปัญหา
+LOGOUT_REDIRECT_URL = '/'
 # ==========================================
 # ตั้งค่าการเก็บไฟล์รูปภาพ (Media)
 # ==========================================

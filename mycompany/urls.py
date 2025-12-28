@@ -7,6 +7,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path('accounts/logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
     # 1. หน้า Admin (ระบบหลังบ้าน)
     path('admin/', admin.site.urls),
 
