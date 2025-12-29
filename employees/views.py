@@ -73,7 +73,6 @@ def home(request):
 def dashboard(request):
     emp = get_employee_from_user(request.user)
     
-    # 🕵️‍♀️ 1. กำหนดสิทธิ์
     show_sales = False
     show_hr = False
     role_name = "General Staff"
@@ -114,11 +113,13 @@ def dashboard(request):
         'sales_chart_data': '[]', 'sales_labels': '[]',
         'top_prod_labels': '[]', 'top_prod_data': '[]',
         'total_employees': 0, 'total_salary': "0.00", 'pending_leaves': 0, 'absent_today': 0,
-        'sales_today': "0.00", 'sales_month': "0.00",
         'dept_summary': [],
         'filter_start': '', 'filter_end': '',
-        'orders_today_count': 0,
-        'items_sold_today': 0,
+        'period_sales_amount': "0.00", 
+        'sales_today': "0.00",
+        'sales_month': "0.00",
+        'period_orders_count': 0,
+        'period_items_sold': 0,
         'low_stock_count': 0,
         'total_products': 0,
     }
@@ -157,21 +158,14 @@ def dashboard(request):
             'dept_summary': dept_summary,
         })
 
-    # --- 💰 ส่วนที่ 2: ข้อมูลยอดขาย ---
+    # --- 💰 ส่วนที่ 2: ข้อมูลยอดขาย (แก้ไข Default Date) ---
     if show_sales:
-        sales_today = Order.objects.filter(order_date__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        sales_month = Order.objects.filter(order_date__month=today.month, order_date__year=today.year).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-
-        orders_today_count = Order.objects.filter(order_date__date=today).count()
-        items_sold_today = OrderItem.objects.filter(order__order_date__date=today).aggregate(Sum('quantity'))['quantity__sum'] or 0
-        low_stock_count = Product.objects.filter(stock__lte=10).count()
-        total_products = Product.objects.filter(is_active=True).count()
-
         req_start = request.GET.get('sales_start')
         req_end = request.GET.get('sales_end')
         
+        # ✅ แก้ไขตรงนี้: ตั้งค่า Default เป็น "วันนี้" ทั้งคู่
         default_end = today
-        default_start = today - timedelta(days=6)
+        default_start = today # เดิมคือ today - timedelta(days=6)
 
         if req_start and req_end:
             try:
@@ -187,9 +181,19 @@ def dashboard(request):
         context['filter_start'] = sales_start.strftime('%Y-%m-%d')
         context['filter_end'] = sales_end.strftime('%Y-%m-%d')
 
+        period_sales_amount = Order.objects.filter(order_date__date__range=[sales_start, sales_end]).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        period_orders_count = Order.objects.filter(order_date__date__range=[sales_start, sales_end]).count()
+        period_items_sold = OrderItem.objects.filter(order__order_date__date__range=[sales_start, sales_end]).aggregate(Sum('quantity'))['quantity__sum'] or 0
+
+        sales_today = Order.objects.filter(order_date__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        sales_month = Order.objects.filter(order_date__month=today.month, order_date__year=today.year).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        low_stock_count = Product.objects.filter(stock__lte=10).count()
+        total_products = Product.objects.filter(is_active=True).count()
+
         sales_labels = []
         sales_chart_data = []
         delta_days = (sales_end - sales_start).days
+        # สร้างกราฟ (ถ้าระยะห่างเป็น 0 คือวันเดียว ก็จะโชว์จุดเดียวถูกต้องแล้ว)
         date_list = [sales_start + timedelta(days=i) for i in range(delta_days + 1)]
         
         for d in date_list:
@@ -207,16 +211,17 @@ def dashboard(request):
         top_prod_data = [item['total_qty'] for item in top_products]
 
         context.update({
+            'period_sales_amount': "{:,.2f}".format(period_sales_amount),
             'sales_today': "{:,.2f}".format(sales_today),
             'sales_month': "{:,.2f}".format(sales_month),
+            'period_orders_count': period_orders_count,
+            'period_items_sold': period_items_sold,
+            'low_stock_count': low_stock_count,
+            'total_products': total_products,
             'sales_labels': json.dumps(sales_labels),
             'sales_chart_data': json.dumps(sales_chart_data),
             'top_prod_labels': json.dumps(top_prod_labels),
             'top_prod_data': json.dumps(top_prod_data),
-            'orders_today_count': orders_today_count,
-            'items_sold_today': items_sold_today,
-            'low_stock_count': low_stock_count,
-            'total_products': total_products,
         })
 
     # --- 🔔 ส่วนที่ 3: กิจกรรมล่าสุด ---
@@ -261,8 +266,9 @@ def dashboard(request):
 
     return render(request, 'employees/dashboard.html', context)
 
+# ... (ส่วนอื่นเหมือนเดิม) ...
 # ==========================================
-# 2. หน้าประวัติพนักงาน (เพิ่ม Filter วันที่ ✅)
+# 2. หน้าประวัติพนักงาน
 # ==========================================
 @login_required
 def employee_detail(request, emp_id):
@@ -270,15 +276,12 @@ def employee_detail(request, emp_id):
     attendance_list = Attendance.objects.filter(employee=employee).order_by('-date')
     leave_list = LeaveRequest.objects.filter(employee=employee).order_by('-start_date')
 
-    # ✅ 1. รับค่าวันที่จากช่องค้นหา (ถ้ามี)
+    # กรองวันที่
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
     
-    # ✅ 2. ถ้ามีการเลือกวันที่ ให้กรองข้อมูล
     if start_date and end_date:
-        # กรองการลงเวลา (Attendance)
         attendance_list = attendance_list.filter(date__range=[start_date, end_date])
-        # กรองการลา (Leave) - ดูว่าวันเริ่มลาอยู่ในช่วงที่เลือกไหม
         leave_list = leave_list.filter(start_date__gte=start_date, start_date__lte=end_date)
 
     start_work_time = datetime.time(9, 0, 0)
@@ -313,12 +316,10 @@ def employee_detail(request, emp_id):
         'sick_deduct': "{:,.0f}".format(sick_count * 500),
         'business_count': business_count,
         'business_deduct': "{:,.0f}".format(business_count * 1000),
-        # ✅ ส่งค่าวันที่กลับไปแสดงในช่อง
         'filter_start': start_date,
         'filter_end': end_date,
     })
 
-# ... (ส่วนอื่นเหมือนเดิม) ...
 # ==========================================
 # 3. ระบบลางาน
 # ==========================================
@@ -408,7 +409,6 @@ def employee_payslip(request, emp_id):
         'today': timezone.now(),
     })
 
-# ✅ แก้ไขฟังก์ชันนี้ให้แปลงเวลาเป็น Local Time (ไทย)
 @login_required
 def attendance_action(request, emp_id):
     employee = get_object_or_404(Employee, pk=emp_id)
@@ -421,9 +421,9 @@ def attendance_action(request, emp_id):
     attendance, created = Attendance.objects.get_or_create(employee=employee, date=today)
     
     if not attendance.time_in:
-        attendance.time_in = now_time # บันทึกเวลาไทย
+        attendance.time_in = now_time
     elif not attendance.time_out:
-        attendance.time_out = now_time # บันทึกเวลาไทย
+        attendance.time_out = now_time
         
     attendance.save()
     return redirect('employee_detail', emp_id=emp_id)

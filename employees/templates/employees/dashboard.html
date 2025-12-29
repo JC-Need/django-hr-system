@@ -5,7 +5,6 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
     .flatpickr-input { background-color: #fff !important; cursor: pointer; }
-    /* เพิ่ม Effect ให้ปุ่ม Profile ดูน่ากด */
     .btn-profile-link:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important; }
 </style>
 
@@ -38,20 +37,52 @@
     </div>
     
     <h4 class="mb-3 text-secondary fw-bold"><i class="fas fa-cash-register"></i> ภาพรวมฝ่ายขาย (Sales Dashboard)</h4>
+    
+    <div class="row g-2 align-items-center mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 bg-light">
+                <div class="card-body py-2">
+                    <form method="get" class="row g-2 align-items-center">
+                        <div class="col-auto"><span class="fw-bold text-success"><i class="fas fa-filter me-1"></i> คำนวณยอดตามช่วงเวลา:</span></div>
+                        <div class="col-auto">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white">ตั้งแต่</span>
+                                <input type="text" name="sales_start" class="form-control datepicker text-center" value="{{ filter_start }}" autocomplete="off" placeholder="วว/ดด/ปปปป">
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white">ถึง</span>
+                                <input type="text" name="sales_end" class="form-control datepicker text-center" value="{{ filter_end }}" autocomplete="off" placeholder="วว/ดด/ปปปป">
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm"><i class="fas fa-search me-1"></i> คำนวณผล</button>
+                            
+                            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm ms-1 fw-bold">
+                                <i class="fas fa-calendar-day me-1"></i> วันนี้
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="card bg-white border-start border-4 border-info shadow-sm h-100 py-2">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">บิลขายวันนี้ (ออเดอร์)</div>
-                    <div class="h3 mb-0 fw-bold text-gray-800">{{ orders_today_count }} ใบ</div>
+                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">บิลขาย (ตามช่วงเวลา)</div>
+                    <div class="h3 mb-0 fw-bold text-gray-800">{{ period_orders_count }} ใบ</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card bg-white border-start border-4 border-primary shadow-sm h-100 py-2">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">สินค้าที่ขายวันนี้ (ชิ้น)</div>
-                    <div class="h3 mb-0 fw-bold text-gray-800">{{ items_sold_today }} ชิ้น</div>
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">สินค้าที่ขาย (ตามช่วงเวลา)</div>
+                    <div class="h3 mb-0 fw-bold text-gray-800">{{ period_items_sold }} ชิ้น</div>
                 </div>
             </div>
         </div>
@@ -173,34 +204,6 @@
             {% endif %}
 
             {% if show_sales %}
-             <div class="card shadow-sm border-0 mb-4 bg-light">
-                <div class="card-body py-2">
-                    <form method="get" class="row g-2 align-items-center">
-                        <div class="col-auto"><span class="fw-bold text-secondary"><i class="fas fa-filter me-1"></i> กรองช่วงเวลา:</span></div>
-                        <div class="col-auto">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white">ตั้งแต่</span>
-                                <input type="text" name="sales_start" class="form-control datepicker text-center" value="{{ filter_start }}" placeholder="วัน/เดือน/ปี">
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white">ถึง</span>
-                                <input type="text" name="sales_end" class="form-control datepicker text-center" value="{{ filter_end }}" placeholder="วัน/เดือน/ปี">
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm">
-                                <i class="fas fa-search me-1"></i> แสดงผล
-                            </button>
-                            {% if request.GET.sales_start %}
-                            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm ms-1">ล้างค่า</a>
-                            {% endif %}
-                        </div>
-                    </form>
-                </div>
-            </div>
-
             <div class="card shadow">
                 <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-success">📈 แนวโน้มยอดขาย (ตามช่วงเวลาที่เลือก)</h6></div>
                 <div class="card-body"><div style="height: 300px;"><canvas id="salesChart"></canvas></div></div>
@@ -210,6 +213,7 @@
         </div>
 
         <div class="col-lg-4 mb-4">
+            
             {% if show_hr %}
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
@@ -225,6 +229,30 @@
                         <span class="me-2"><i class="fas fa-circle text-danger"></i> ขาด</span>
                     </div>
                 </div>
+            </div>
+            {% endif %}
+
+            {% if show_sales %}
+            <div class="card bg-gradient-success text-white shadow mb-4" style="background: linear-gradient(45deg, #1cc88a, #13855c);">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="opacity-75">ยอดขายรวม (ตามช่วงเวลา)</h6>
+                        <h1 class="fw-bold mb-0">฿{{ period_sales_amount }}</h1>
+                    </div>
+                    <i class="fas fa-coins fa-3x opacity-50"></i>
+                </div>
+            </div>
+            
+            <div class="card bg-gradient-info text-white shadow mb-4" style="background: linear-gradient(45deg, #36b9cc, #258391);">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div><h6 class="opacity-75">ยอดขายเดือนนี้ (ภาพรวม)</h6><h1 class="fw-bold mb-0">฿{{ sales_month }}</h1></div>
+                    <i class="fas fa-calendar-alt fa-3x opacity-50"></i>
+                </div>
+            </div>
+
+            <div class="card shadow mb-4">
+                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-info">🏆 สินค้าขายดี Top 5</h6></div>
+                <div class="card-body"><div style="height: 300px;"><canvas id="prodChart"></canvas></div></div>
             </div>
             {% endif %}
 
@@ -259,27 +287,6 @@
                 </div>
             </div>
 
-            {% if show_sales %}
-            <div class="card bg-gradient-success text-white shadow mb-4" style="background: linear-gradient(45deg, #1cc88a, #13855c);">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div><h6 class="opacity-75">ยอดขายวันนี้</h6><h1 class="fw-bold mb-0">฿{{ sales_today }}</h1></div>
-                    <i class="fas fa-coins fa-3x opacity-50"></i>
-                </div>
-            </div>
-            
-            <div class="card bg-gradient-info text-white shadow mb-4" style="background: linear-gradient(45deg, #36b9cc, #258391);">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div><h6 class="opacity-75">ยอดขายเดือนนี้</h6><h1 class="fw-bold mb-0">฿{{ sales_month }}</h1></div>
-                    <i class="fas fa-calendar-alt fa-3x opacity-50"></i>
-                </div>
-            </div>
-
-            <div class="card shadow">
-                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-info">🏆 สินค้าขายดี Top 5</h6></div>
-                <div class="card-body"><div style="height: 300px;"><canvas id="prodChart"></canvas></div></div>
-            </div>
-            {% endif %}
-
         </div>
     </div>
 
@@ -290,12 +297,17 @@
 <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script> 
 
 <script>
-    flatpickr(".datepicker", {
-        dateFormat: "Y-m-d", 
-        altInput: true,      
-        altFormat: "d/m/Y",  
-        locale: "th",        
-        allowInput: true     
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".datepicker").forEach(function(input) {
+            flatpickr(input, {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                locale: "th",
+                allowInput: true,
+                defaultDate: input.getAttribute("value")
+            });
+        });
     });
 
     {% if show_hr %}
