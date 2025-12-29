@@ -40,10 +40,10 @@
                         </td>
                         <td>{{ emp.position }}</td>
                         <td>
-                            {% if emp.status == 'Active' or emp.status == 'ทำงานปกติ' %}
+                            {% if emp.status|lower == 'active' or emp.status == 'ทำงานปกติ' %}
                                 <span class="badge bg-success rounded-pill">ทำงานปกติ</span>
                             {% else %}
-                                <span class="badge bg-danger rounded-pill">ลาออก/พักงาน</span>
+                                <span class="badge bg-danger rounded-pill">{{ emp.status }}</span>
                             {% endif %}
                         </td>
                         <td>
