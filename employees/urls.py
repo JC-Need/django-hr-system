@@ -31,10 +31,14 @@ urlpatterns = [
     # 8. Webhook (LINE Bot)
     path('webhook/', views.line_webhook, name='line_webhook'),
 
-    # 9. จัดการ User & รีเซ็ตรหัสผ่าน (เติมให้แล้วครับ! ✅)
+    # 9. จัดการ User & รีเซ็ตรหัสผ่าน
     path('users/manage/', views.user_list, name='user_list'),
     path('users/reset-password/<int:user_id>/', views.admin_reset_password, name='admin_reset_password'),
 
-    # 10. ออกจากระบบ
+    # 10. ระบบขายหน้าร้าน (POS System) 🛒 ✅ เพิ่มใหม่ตรงนี้ครับ
+    path('pos/', views.pos_home, name='pos_home'),           # หน้าจอขายของ
+    path('pos/checkout/', views.pos_checkout, name='pos_checkout'), # ลิงก์สำหรับคิดเงิน
+
+    # 11. ออกจากระบบ
     path('logout/', views.logout_view, name='logout'),
 ]
